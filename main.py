@@ -1,7 +1,12 @@
 from telegram import Bot
-import asyncio
+
 import requests
 from bs4 import BeautifulSoup
+
+from pyowm import OWM
+from pyowm.utils.config import get_default_config
+
+import asyncio
 import schedule
 import time
 
@@ -10,6 +15,7 @@ CHANNEL_ID = '@GoKupatsya'
 
 URL_WATER = "http://worldseatemp.com/ru/Cyprus/Limassol/"
 
+WEATHER_URL = "https://weather.com/ru-RU/weather/hourbyhour/l/Limassol+Limassol+Cyprus?canonicalCityId=a2db05887febdeeef946bcca01cee4e710f05b137599c22e5551217d1156430b"
 
 
 class SelectorNotFoundException(Exception):
@@ -27,34 +33,41 @@ def watter_temp():
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
-        temp = soup.select_one("#current > div > table").findAll("td")[1].text
-        if not temp:
+        water_temp = soup.select_one("#current > div > table").findAll("td")[1].text
+        if not water_temp:
             raise SelectorNotFoundException
-        return temp
+        return water_temp
 
     except requests.RequestException as e:
         print(f"Error during requests to {URL_WATER}: {str(e)}")
         return "🤷‍"
 
+
 def temp_uv():
-    querystring = {
-        "location": "34.688440, 33.068460",
-        "fields": ["temperature", "uvIndex"],
-        "units": "metric",
-        "timesteps": "current",
-        "apikey": "your-api-key"
-    }
+    try:
+        response = requests.get(WEATHER_URL)
+        response.raise_for_status()
 
-    response = requests.request("GET", url, params=querystring)
-    data = response.json()
-    current_weather = data['data']['timelines'][0]['intervals'][0]['values']
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-    temperature = current_weather['temperature']
-    uv_index = current_weather['uvIndex']
+        air_temp = soup.select_one(
+            "#detailIndex0 > summary > div > div > div.DetailsSummary--temperature--1kVVp > span").text
+        uv_index = soup.select_one("#detailIndex0 > div > div.DaypartDetails--DetailsTable--1zK4r.DetailsTable"
+                                   "--flexColumn--2fOHz > ul > li:nth-child(4) > div > "
+                                   "span.DetailsTable--value--2YD0-").text
+        if not air_temp or not uv_index:
+            raise SelectorNotFoundException
+        return air_temp, uv_index
+
+    except requests.RequestException as e:
+        print(f"Error during requests to {URL_WATER}: {str(e)}")
+        return "🤷‍"
 
 
 def get_message():
-    return f"🌊: {watter_temp()}, 💨: 31, ☀️: 6.0"
+    wt = watter_temp()
+    at, uv = temp_uv()
+    return f"🌊: {wt}, 💨: {at}, ☀️: {uv}"
 
 
 async def main():
@@ -69,4 +82,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    print(watter_temp())
+    print(get_message())
