@@ -1,20 +1,16 @@
 from telegram import Bot
+from telegram.ext import Application
 
 import requests
 from bs4 import BeautifulSoup
 
-from pyowm import OWM
-from pyowm.utils.config import get_default_config
-
 import asyncio
-import schedule
-import time
+from datetime import datetime
 
 TG_TOKEN = open("tg_api_token.txt").read()
 CHANNEL_ID = '@GoKupatsya'
 
 URL_WATER = "http://worldseatemp.com/ru/Cyprus/Limassol/"
-
 WEATHER_URL = "https://weather.com/ru-RU/weather/hourbyhour/l/Limassol+Limassol+Cyprus?canonicalCityId=a2db05887febdeeef946bcca01cee4e710f05b137599c22e5551217d1156430b"
 
 
@@ -70,16 +66,27 @@ def get_message():
     return f"🌊: {wt}, 💨: {at}, ☀️: {uv}"
 
 
-async def main():
-    bot = Bot(TG_TOKEN)
-    await bot.send_message(chat_id=CHANNEL_ID, text=get_message())
+async def send_message(bot):
+    try:
+        await bot.send_message(chat_id=CHANNEL_ID, text=get_message())
+        print(f"{datetime.now()} : Message sent")
+    except Exception as e:
+        print(f"Failed to send message: {e}")
 
-    # schedule.every().hour.do(hourly_message, bot=bot)
-    #
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(1)  # Sleep for 1 second between checks
+
+async def periodic_message():
+    bot = Bot(TG_TOKEN)
+    while True:
+        await send_message(bot)
+        await asyncio.sleep(300)  # sleep for 300 seconds
+
+
+def main():
+    """Create the bot and run the periodic messaging task."""
+    _ = Application.builder().token(TG_TOKEN).build()
+
+    asyncio.run(periodic_message())
 
 
 if __name__ == '__main__':
-    print(get_message())
+    main()
