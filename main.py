@@ -56,7 +56,7 @@ def temp_uv():
         return air_temp, uv_index
 
     except requests.RequestException as e:
-        print(f"Error during requests to {URL_WATER}: {str(e)}")
+        print(f"Error during requests to {WEATHER_URL}: {str(e)}")
         return "🤷‍"
 
 
@@ -78,7 +78,7 @@ async def periodic_message():
     bot = Bot(TG_TOKEN)
     while True:
         await send_message(bot)
-        await asyncio.sleep(300)  # sleep for 300 seconds
+        await asyncio.sleep(60 * 60)  # sleep for 1 hour
 
 
 def main():
